@@ -123,6 +123,7 @@ export async function POST(request: NextRequest, { params }: Params) {
       notes: true,
       rescheduledFromId: true,
       createdAt: true,
+      _count: { select: { bookings: true, guides: true } },
     },
   });
 
