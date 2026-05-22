@@ -1,8 +1,8 @@
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { prisma } from "@/lib/prisma";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import Anthropic from "@anthropic-ai/sdk";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 export async function POST(request: Request) {
   const supabase = await createSupabaseServerClient();
@@ -52,7 +52,7 @@ export async function POST(request: Request) {
       id: g.id,
       name: g.user.fullName,
       avatarUrl: g.user.avatarUrl,
-      dailyRate: g.dailyRate,
+      dailyRate: Number(g.dailyRate),
       currency: g.currency,
       specializations: g.specializations,
       languages: g.languages,
@@ -104,19 +104,19 @@ ${JSON.stringify(guides, null, 2)}`;
       sendEvent({ type: "guides", guides });
 
       try {
-        const model = genAI.getGenerativeModel({
-          model: "gemini-2.0-flash",
-          systemInstruction: systemPrompt,
+        const claudeStream = anthropic.messages.stream({
+          model: "claude-sonnet-4-6",
+          max_tokens: 2048,
+          system: systemPrompt,
+          messages: [{ role: "user", content: message }],
         });
 
-        const result = await model.generateContentStream({
-          contents: [{ role: "user", parts: [{ text: message }] }],
-        });
-
-        for await (const chunk of result.stream) {
-          const text = chunk.text();
-          if (text) {
-            sendEvent({ type: "text", text });
+        for await (const chunk of claudeStream) {
+          if (
+            chunk.type === "content_block_delta" &&
+            chunk.delta.type === "text_delta"
+          ) {
+            sendEvent({ type: "text", text: chunk.delta.text });
           }
         }
 

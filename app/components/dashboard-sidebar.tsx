@@ -14,6 +14,8 @@ import {
   Compass,
   MapPin,
   Sparkles,
+  HardHat,
+  Backpack,
 } from "lucide-react";
 
 type Role = "TRAVELLER" | "GUIDE" | "ADMIN";
@@ -52,6 +54,8 @@ const ADMIN_MENU: SidebarEntry[] = [
     children: [
       { label: "Regions", href: "/dashboard/admin/regions", icon: MapPin },
       { label: "Treks", href: "/dashboard/admin/treks", icon: Compass },
+      { label: "Departures", href: "/dashboard/admin/departures", icon: CalendarDays },
+      { label: "Company Guides", href: "/dashboard/admin/company-guides", icon: HardHat },
     ],
   },
 ];
@@ -68,6 +72,7 @@ const TRAVELLER_MENU: SidebarEntry[] = [
   { label: "AI Trek Planner", href: "/dashboard/traveller/planner", icon: Sparkles },
   { label: "Find Guides", href: "/guides", icon: Users },
   { label: "My Hires", href: "/dashboard/traveller/hires", icon: ClipboardList },
+  { label: "My Bookings", href: "/dashboard/traveller/bookings", icon: Backpack },
 ];
 
 const MENUS: Record<Role, SidebarEntry[]> = {

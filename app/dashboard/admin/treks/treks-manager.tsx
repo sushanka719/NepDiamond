@@ -81,6 +81,8 @@ export default function TreksManager({ initialTreks, regions }: Props) {
     durationDays: "",
     pricePerPerson: "",
     maxParticipants: "",
+    departureDate: "",
+    returnDate: "",
     coverImageUrl: "",
   });
 
@@ -97,8 +99,8 @@ export default function TreksManager({ initialTreks, regions }: Props) {
 
   async function handleCreate() {
     if (!form.regionId || !form.title.trim() || !form.description.trim() ||
-      !form.durationDays || !form.pricePerPerson || !form.maxParticipants) {
-      toast.error("Please fill all required fields");
+      !form.durationDays || !form.pricePerPerson || !form.maxParticipants || !form.departureDate) {
+      toast.error("Please fill all required fields including departure date");
       return;
     }
     setLoading(true);
@@ -114,15 +116,16 @@ export default function TreksManager({ initialTreks, regions }: Props) {
           durationDays: Number(form.durationDays),
           pricePerPerson: Number(form.pricePerPerson),
           maxParticipants: Number(form.maxParticipants),
+          departureDate: form.departureDate,
+          returnDate: form.returnDate || undefined,
           coverImageUrl: form.coverImageUrl.trim() || undefined,
         }),
       });
       const data = await res.json();
       if (!res.ok) { toast.error(data.error ?? "Failed to create trek"); return; }
-      toast.success(`Trek "${data.trek.title}" created as DRAFT`);
+      toast.success(`Trek "${data.trek.title}" created and listed for departure`);
       setShowCreate(false);
-      setForm({ regionId: "", title: "", description: "", difficulty: "MODERATE", durationDays: "", pricePerPerson: "", maxParticipants: "", coverImageUrl: "" });
-      // Navigate to the new trek editor
+      setForm({ regionId: "", title: "", description: "", difficulty: "MODERATE", durationDays: "", pricePerPerson: "", maxParticipants: "", departureDate: "", returnDate: "", coverImageUrl: "" });
       router.push(`/dashboard/admin/treks/${data.trek.id}`);
     } finally { setLoading(false); }
   }
@@ -299,6 +302,16 @@ export default function TreksManager({ initialTreks, regions }: Props) {
               <div className="space-y-1.5">
                 <Label>Max participants <span className="text-destructive">*</span></Label>
                 <Input type="number" min={1} value={form.maxParticipants} onChange={(e) => setField("maxParticipants", e.target.value)} placeholder="12" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>Departure date <span className="text-destructive">*</span></Label>
+                <Input type="date" value={form.departureDate} onChange={(e) => setField("departureDate", e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Return date (optional)</Label>
+                <Input type="date" value={form.returnDate} onChange={(e) => setField("returnDate", e.target.value)} />
               </div>
             </div>
             <div className="space-y-1.5">

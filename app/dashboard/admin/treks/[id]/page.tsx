@@ -2,7 +2,7 @@ import { requireAdmin } from "@/lib/admin-guard";
 import { prisma } from "@/lib/prisma";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, CalendarDays } from "lucide-react";
 import TrekEditor from "./trek-editor";
 
 export default async function AdminTrekDetailPage({
@@ -60,15 +60,23 @@ export default async function AdminTrekDetailPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <Link
+            href="/dashboard/admin/treks"
+            className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition-colors shrink-0"
+          >
+            <ChevronLeft className="h-4 w-4" /> Treks
+          </Link>
+          <span className="text-slate-300 dark:text-slate-600">/</span>
+          <h1 className="text-sm font-semibold text-slate-700 dark:text-slate-300 truncate">{trek.title}</h1>
+        </div>
         <Link
-          href="/dashboard/admin/treks"
-          className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition-colors"
+          href={`/dashboard/admin/treks/${trek.id}/departures`}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-emerald-600 text-white hover:bg-emerald-700 transition-colors shrink-0"
         >
-          <ChevronLeft className="h-4 w-4" /> Treks
+          <CalendarDays className="h-3.5 w-3.5" /> Manage Departures
         </Link>
-        <span className="text-slate-300 dark:text-slate-600">/</span>
-        <h1 className="text-sm font-semibold text-slate-700 dark:text-slate-300 truncate">{trek.title}</h1>
       </div>
 
       <TrekEditor trek={serialized} regions={regions} />

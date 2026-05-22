@@ -90,11 +90,14 @@ export async function GET(request: NextRequest) {
 /**
  * POST /api/admin/treks
  *
- * Creates a new trek (always starts as DRAFT).
+ * Creates a trek and its first departure in one transaction.
+ * The departure is immediately SCHEDULED (publicly listed).
  *
  * Body: {
  *   regionId, title, description, difficulty,
  *   durationDays, pricePerPerson, maxParticipants,
+ *   departureDate,               ← required
+ *   returnDate?,
  *   coverImageUrl?,
  *   itinerary?: { dayNumber, title, description }[]
  * }
@@ -111,6 +114,8 @@ export async function POST(request: NextRequest) {
     durationDays?: number;
     pricePerPerson?: number;
     maxParticipants?: number;
+    departureDate?: string;
+    returnDate?: string;
     coverImageUrl?: string;
     itinerary?: { dayNumber: number; title: string; description: string }[];
   };
@@ -129,19 +134,17 @@ export async function POST(request: NextRequest) {
     durationDays,
     pricePerPerson,
     maxParticipants,
+    departureDate,
+    returnDate,
     coverImageUrl,
     itinerary = [],
   } = body;
 
-  // --- Validation ---
   if (!regionId) return Response.json({ error: "regionId is required" }, { status: 400 });
   if (!title?.trim()) return Response.json({ error: "title is required" }, { status: 400 });
   if (!description?.trim()) return Response.json({ error: "description is required" }, { status: 400 });
   if (!difficulty || !VALID_DIFFICULTIES.includes(difficulty as (typeof VALID_DIFFICULTIES)[number])) {
-    return Response.json(
-      { error: `difficulty must be one of: ${VALID_DIFFICULTIES.join(", ")}` },
-      { status: 400 }
-    );
+    return Response.json({ error: `difficulty must be one of: ${VALID_DIFFICULTIES.join(", ")}` }, { status: 400 });
   }
   if (!durationDays || durationDays < 1) {
     return Response.json({ error: "durationDays must be at least 1" }, { status: 400 });
@@ -152,67 +155,60 @@ export async function POST(request: NextRequest) {
   if (!maxParticipants || maxParticipants < 1) {
     return Response.json({ error: "maxParticipants must be at least 1" }, { status: 400 });
   }
-
-  const regionExists = await prisma.region.findUnique({
-    where: { id: regionId },
-    select: { id: true },
-  });
-  if (!regionExists) {
-    return Response.json({ error: "Region not found" }, { status: 404 });
+  if (!departureDate) return Response.json({ error: "departureDate is required" }, { status: 400 });
+  const parsedDeparture = new Date(departureDate);
+  if (isNaN(parsedDeparture.getTime())) {
+    return Response.json({ error: "departureDate is not a valid date" }, { status: 400 });
   }
+  const parsedReturn = returnDate ? new Date(returnDate) : null;
+  if (parsedReturn && isNaN(parsedReturn.getTime())) {
+    return Response.json({ error: "returnDate is not a valid date" }, { status: 400 });
+  }
+
+  const regionExists = await prisma.region.findUnique({ where: { id: regionId }, select: { id: true } });
+  if (!regionExists) return Response.json({ error: "Region not found" }, { status: 404 });
 
   const slug = slugify(title.trim());
-  const slugConflict = await prisma.trek.findUnique({
-    where: { slug },
-    select: { id: true },
-  });
+  const slugConflict = await prisma.trek.findUnique({ where: { slug }, select: { id: true } });
   if (slugConflict) {
-    return Response.json(
-      { error: "A trek with that title already exists" },
-      { status: 409 }
-    );
+    return Response.json({ error: "A trek with that title already exists" }, { status: 409 });
   }
 
-  const trek = await prisma.trek.create({
-    data: {
-      regionId,
-      title: title.trim(),
-      slug,
-      description: description.trim(),
-      difficulty: difficulty as (typeof VALID_DIFFICULTIES)[number],
-      durationDays,
-      pricePerPerson,
-      maxParticipants,
-      coverImageUrl: coverImageUrl ?? null,
-      status: "DRAFT",
-      itinerary: itinerary.length > 0
-        ? {
-            create: itinerary.map((day) => ({
-              dayNumber: day.dayNumber,
-              title: day.title.trim(),
-              description: day.description.trim(),
-            })),
-          }
-        : undefined,
-    },
-    select: {
-      id: true,
-      title: true,
-      slug: true,
-      status: true,
-      difficulty: true,
-      durationDays: true,
-      pricePerPerson: true,
-      maxParticipants: true,
-      coverImageUrl: true,
-      createdAt: true,
-      region: { select: { id: true, name: true } },
-      itinerary: {
-        select: { id: true, dayNumber: true, title: true },
-        orderBy: { dayNumber: "asc" },
+  const { trek, departure } = await prisma.$transaction(async (tx) => {
+    const trek = await tx.trek.create({
+      data: {
+        regionId,
+        title: title.trim(),
+        slug,
+        description: description.trim(),
+        difficulty: difficulty as (typeof VALID_DIFFICULTIES)[number],
+        durationDays,
+        pricePerPerson,
+        maxParticipants,
+        coverImageUrl: coverImageUrl ?? null,
+        status: "PUBLISHED",
+        itinerary: itinerary.length > 0
+          ? { create: itinerary.map((d) => ({ dayNumber: d.dayNumber, title: d.title.trim(), description: d.description.trim() })) }
+          : undefined,
       },
-    },
+      select: { id: true, title: true, slug: true, status: true, difficulty: true, durationDays: true, pricePerPerson: true, maxParticipants: true, coverImageUrl: true, createdAt: true, region: { select: { id: true, name: true } }, itinerary: { select: { id: true, dayNumber: true, title: true }, orderBy: { dayNumber: "asc" } } },
+    });
+
+    const departure = await tx.trekDeparture.create({
+      data: {
+        trekId: trek.id,
+        departureDate: parsedDeparture,
+        returnDate: parsedReturn,
+        pricePerPerson,
+        maxParticipants,
+        currency: "USD",
+        status: "SCHEDULED",
+      },
+      select: { id: true, departureDate: true, returnDate: true, pricePerPerson: true, maxParticipants: true, status: true },
+    });
+
+    return { trek, departure };
   });
 
-  return Response.json({ trek }, { status: 201 });
+  return Response.json({ trek, departure }, { status: 201 });
 }

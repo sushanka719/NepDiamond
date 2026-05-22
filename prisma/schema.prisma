@@ -56,6 +56,21 @@ enum PaymentProvider {
   STRIPE
 }
 
+enum DepartureStatus {
+  SCHEDULED
+  FULL
+  DEPARTED
+  COMPLETED
+  CANCELLED
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  REFUNDED
+}
+
 // ============================================================
 // USER
 // ============================================================
@@ -76,6 +91,8 @@ model User {
   guideHiresMade GuideHire[]   @relation("RequesterHires")
   payments       Payment[]
   reviews        Review[]
+  trekBookings   TrekBooking[]
+  trekPayments   TrekBookingPayment[]
 
   @@index([email])
   @@index([role])
@@ -119,9 +136,10 @@ model Trek {
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 
-  region    Region             @relation(fields: [regionId], references: [id])
-  itinerary TrekItineraryDay[]
-  media     TrekMedia[]
+  region     Region             @relation(fields: [regionId], references: [id])
+  itinerary  TrekItineraryDay[]
+  media      TrekMedia[]
+  departures TrekDeparture[]
 
   @@index([regionId])
   @@index([slug])
@@ -304,4 +322,132 @@ model Review {
   @@index([guideId])
   @@index([reviewerId])
   @@map("reviews")
+}
+
+// ============================================================
+// TREK DEPARTURE
+// ============================================================
+
+model TrekDeparture {
+  id              String          @id @default(uuid()) @db.Uuid
+  trekId          String          @db.Uuid
+  departureDate   DateTime
+  returnDate      DateTime?
+  pricePerPerson  Decimal         @db.Decimal(10, 2)
+  currency        String          @default("USD")
+  maxParticipants Int
+  status          DepartureStatus @default(SCHEDULED)
+  notes                String?
+  rescheduledFromId    String?         @db.Uuid
+  deletedAt            DateTime?
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+
+  trek              Trek                 @relation(fields: [trekId], references: [id])
+  rescheduledFrom   TrekDeparture?       @relation("DepartureLineage", fields: [rescheduledFromId], references: [id])
+  rescheduledInto   TrekDeparture[]      @relation("DepartureLineage")
+  bookings          TrekBooking[]
+  guides            TrekDepartureGuide[]
+
+  @@index([trekId])
+  @@index([departureDate])
+  @@index([status])
+  @@map("trek_departures")
+}
+
+// ============================================================
+// TREK BOOKING
+// ============================================================
+
+model TrekBooking {
+  id          String        @id @default(uuid()) @db.Uuid
+  departureId String        @db.Uuid
+  userId      String        @db.Uuid
+  status      BookingStatus @default(PENDING)
+  amount      Decimal       @db.Decimal(10, 2)
+  currency    String        @default("USD")
+  confirmedAt DateTime?
+  cancelledAt DateTime?
+  deletedAt   DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  departure TrekDeparture      @relation(fields: [departureId], references: [id])
+  user      User               @relation(fields: [userId], references: [id])
+  payment   TrekBookingPayment?
+
+  @@unique([departureId, userId])
+  @@index([departureId])
+  @@index([userId])
+  @@index([status])
+  @@map("trek_bookings")
+}
+
+// ============================================================
+// TREK BOOKING PAYMENT
+// ============================================================
+
+model TrekBookingPayment {
+  id                    String          @id @default(uuid()) @db.Uuid
+  bookingId             String          @unique @db.Uuid
+  userId                String          @db.Uuid
+  amount                Decimal         @db.Decimal(10, 2)
+  currency              String          @default("USD")
+  status                PaymentStatus   @default(PENDING)
+  provider              PaymentProvider
+  providerTransactionId String?
+  providerMetadata      Json?
+  paidAt                DateTime?
+  failureReason         String?
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+
+  booking TrekBooking @relation(fields: [bookingId], references: [id])
+  user    User        @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([status])
+  @@map("trek_booking_payments")
+}
+
+// ============================================================
+// COMPANY GUIDE
+// ============================================================
+
+model CompanyGuide {
+  id              String    @id @default(uuid()) @db.Uuid
+  fullName        String
+  email           String?   @unique
+  phone           String?
+  licenseNumber   String?
+  experienceYears Int       @default(0)
+  languages       String[]
+  specializations String[]
+  isActive        Boolean   @default(true)
+  deletedAt       DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  assignments TrekDepartureGuide[]
+
+  @@map("company_guides")
+}
+
+// ============================================================
+// TREK DEPARTURE GUIDE (admin assignment)
+// ============================================================
+
+model TrekDepartureGuide {
+  id          String   @id @default(uuid()) @db.Uuid
+  departureId String   @db.Uuid
+  guideId     String   @db.Uuid
+  role        String?
+  assignedAt  DateTime @default(now())
+
+  departure TrekDeparture @relation(fields: [departureId], references: [id], onDelete: Cascade)
+  guide     CompanyGuide  @relation(fields: [guideId], references: [id])
+
+  @@unique([departureId, guideId])
+  @@index([departureId])
+  @@map("trek_departure_guides")
 }
