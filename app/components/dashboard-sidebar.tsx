@@ -7,14 +7,12 @@ import {
   LayoutDashboard,
   ShieldCheck,
   Users,
-  BarChart3,
   ChevronDown,
   ClipboardList,
   CalendarDays,
   TrendingUp,
   Compass,
-  Heart,
-  User,
+  MapPin,
 } from "lucide-react";
 
 type Role = "TRAVELLER" | "GUIDE" | "ADMIN";
@@ -43,33 +41,31 @@ const ADMIN_MENU: SidebarEntry[] = [
     label: "Guides",
     icon: Users,
     children: [
-      { label: "Verification", href: "/dashboard/admin", icon: ShieldCheck },
+      { label: "Verifications", href: "/dashboard/admin", icon: ShieldCheck },
       { label: "All Guides", href: "/dashboard/admin/guides", icon: Users },
     ],
   },
   {
-    label: "Users",
-    icon: User,
+    label: "Content",
+    icon: Compass,
     children: [
-      { label: "All Users", href: "/admin/users", icon: Users },
+      { label: "Regions", href: "/dashboard/admin/regions", icon: MapPin },
+      { label: "Treks", href: "/dashboard/admin/treks", icon: Compass },
     ],
   },
-  { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
 ];
 
 const GUIDE_MENU: SidebarEntry[] = [
   { label: "Overview", href: "/dashboard/guide", icon: LayoutDashboard },
-  { label: "Bookings", href: "/bookings", icon: ClipboardList },
-  { label: "Schedule", href: "/schedule", icon: CalendarDays },
-  { label: "Earnings", href: "/earnings", icon: TrendingUp },
+  { label: "Hire Requests", href: "/dashboard/guide/hires", icon: ClipboardList },
+  { label: "Schedule", href: "/dashboard/guide/schedule", icon: CalendarDays },
+  { label: "Earnings", href: "/dashboard/guide/earnings", icon: TrendingUp },
 ];
 
 const TRAVELLER_MENU: SidebarEntry[] = [
   { label: "Overview", href: "/dashboard/traveller", icon: LayoutDashboard },
-  { label: "Explore Treks", href: "/explore", icon: Compass },
   { label: "Find Guides", href: "/guides", icon: Users },
-  { label: "My Bookings", href: "/bookings", icon: ClipboardList },
-  { label: "Favorites", href: "/favorites", icon: Heart },
+  { label: "My Hires", href: "/dashboard/traveller/hires", icon: ClipboardList },
 ];
 
 const MENUS: Record<Role, SidebarEntry[]> = {
