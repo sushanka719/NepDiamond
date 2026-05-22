@@ -15,6 +15,8 @@ import {
   ChevronRight,
   CalendarDays,
   DollarSign,
+  Mail,
+  Phone,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 
@@ -608,13 +610,150 @@ export default async function Home() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t py-8 bg-white dark:bg-slate-950">
-        <div className="mx-auto max-w-6xl px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-slate-500">
-          <div className="flex items-center gap-2">
-            <Mountain className="h-5 w-5 text-emerald-600" />
-            <span className="font-semibold text-slate-700 dark:text-slate-300">NepDiamond</span>
+      <footer className="bg-slate-900 text-slate-300">
+        {/* Main footer grid */}
+        <div className="mx-auto max-w-6xl px-6 py-14 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
+          {/* Brand column */}
+          <div className="lg:col-span-1 flex flex-col gap-5">
+            <div className="flex items-center gap-2">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-600">
+                <Mountain className="h-5 w-5 text-white" />
+              </div>
+              <span className="text-lg font-bold text-white tracking-tight">NepDiamond</span>
+            </div>
+            <p className="text-sm text-slate-400 leading-relaxed">
+              Nepal&apos;s premier trekking platform — connecting adventurers with verified local guides for unforgettable Himalayan journeys.
+            </p>
+            {/* Social links */}
+            <div className="flex items-center gap-3">
+              {[
+                {
+                  label: "Instagram",
+                  svg: (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                      <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>
+                    </svg>
+                  ),
+                },
+                {
+                  label: "Twitter / X",
+                  svg: (
+                    <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
+                      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                    </svg>
+                  ),
+                },
+                {
+                  label: "LinkedIn",
+                  svg: (
+                    <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
+                      <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/>
+                    </svg>
+                  ),
+                },
+                {
+                  label: "YouTube",
+                  svg: (
+                    <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
+                      <path d="M22.54 6.42a2.78 2.78 0 0 0-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46a2.78 2.78 0 0 0-1.95 1.96A29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58A2.78 2.78 0 0 0 3.41 19.6C5.12 20 12 20 12 20s6.88 0 8.59-.4a2.78 2.78 0 0 0 1.95-1.97A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z"/><polygon points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02" fill="white"/>
+                    </svg>
+                  ),
+                },
+              ].map(({ label, svg }) => (
+                <a
+                  key={label}
+                  href="#"
+                  aria-label={label}
+                  className="flex h-8 w-8 items-center justify-center rounded-md bg-slate-800 text-slate-400 hover:bg-emerald-600 hover:text-white transition-colors"
+                >
+                  {svg}
+                </a>
+              ))}
+            </div>
           </div>
+
+          {/* Explore column */}
+          <div className="flex flex-col gap-4">
+            <h3 className="text-sm font-semibold text-white uppercase tracking-wider">Explore</h3>
+            <ul className="flex flex-col gap-2.5 text-sm">
+              {[
+                { label: "All Treks", href: "/treks" },
+                { label: "Find a Guide", href: "/guides" },
+                { label: "Trek Planner", href: "/dashboard/traveller/planner" },
+                { label: "Regions", href: "/treks" },
+                { label: "Upcoming Departures", href: "/treks" },
+              ].map(({ label, href }) => (
+                <li key={label}>
+                  <Link href={href} className="text-slate-400 hover:text-emerald-400 transition-colors">
+                    {label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* For Guides column */}
+          <div className="flex flex-col gap-4">
+            <h3 className="text-sm font-semibold text-white uppercase tracking-wider">For Guides</h3>
+            <ul className="flex flex-col gap-2.5 text-sm">
+              {[
+                { label: "Become a Guide", href: "/auth/login" },
+                { label: "Guide Dashboard", href: "/dashboard/guide" },
+                { label: "Manage Schedule", href: "/dashboard/guide/schedule" },
+                { label: "Track Earnings", href: "/dashboard/guide/earnings" },
+                { label: "Verification", href: "/auth/guide-profile" },
+              ].map(({ label, href }) => (
+                <li key={label}>
+                  <Link href={href} className="text-slate-400 hover:text-emerald-400 transition-colors">
+                    {label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Contact column */}
+          <div className="flex flex-col gap-4">
+            <h3 className="text-sm font-semibold text-white uppercase tracking-wider">Contact</h3>
+            <ul className="flex flex-col gap-3 text-sm">
+              <li className="flex items-start gap-2.5 text-slate-400">
+                <MapPin className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />
+                <span>Thamel, Kathmandu<br />Nepal</span>
+              </li>
+              <li className="flex items-center gap-2.5 text-slate-400">
+                <Mail className="h-4 w-4 text-emerald-500 shrink-0" />
+                <a href="mailto:hello@nepdiamond.com" className="hover:text-emerald-400 transition-colors">
+                  hello@nepdiamond.com
+                </a>
+              </li>
+              <li className="flex items-center gap-2.5 text-slate-400">
+                <Phone className="h-4 w-4 text-emerald-500 shrink-0" />
+                <a href="tel:+97714567890" className="hover:text-emerald-400 transition-colors">
+                  +977 1 456 7890
+                </a>
+              </li>
+            </ul>
+            {/* Trust badge */}
+            <div className="mt-2 flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-800/60 px-3 py-2 text-xs text-slate-400">
+              <ShieldCheck className="h-4 w-4 text-emerald-500 shrink-0" />
+              <span>All guides are verified &amp; background-checked</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Divider */}
+        <div className="border-t border-slate-800" />
+
+        {/* Bottom bar */}
+        <div className="mx-auto max-w-6xl px-6 py-5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
           <p>© {new Date().getFullYear()} NepDiamond. Built for Nepal&apos;s trekking community.</p>
+          <div className="flex items-center gap-5">
+            {["Privacy Policy", "Terms of Service", "Cookie Policy"].map((item) => (
+              <a key={item} href="#" className="hover:text-slate-300 transition-colors">
+                {item}
+              </a>
+            ))}
+          </div>
         </div>
       </footer>
     </div>
