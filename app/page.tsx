@@ -10,20 +10,16 @@ import {
   MapPin,
   ArrowRight,
   CheckCircle,
-  LayoutDashboard,
+  BadgeCheck,
+  Clock,
+  ChevronRight,
 } from "lucide-react";
+import Navbar from "@/components/navbar";
 
 type Role = "TRAVELLER" | "GUIDE" | "ADMIN";
 
-const DASHBOARD_HREF: Record<Role, string> = {
-  TRAVELLER: "/dashboard/traveller",
-  GUIDE: "/dashboard/guide",
-  ADMIN: "/dashboard/admin",
-};
-
 export default async function Home() {
-  // Check auth for conditional navbar — never redirect from the landing page
-  let dashboardHref: string | null = null;
+  let authedUser: { fullName: string; avatarUrl: string | null; role: Role } | null = null;
 
   try {
     const supabase = await createSupabaseServerClient();
@@ -34,51 +30,98 @@ export default async function Home() {
     if (user) {
       const dbUser = await prisma.user.findUnique({
         where: { id: user.id },
-        select: { role: true },
+        select: { fullName: true, avatarUrl: true, role: true },
       });
       if (dbUser?.role) {
-        dashboardHref = DASHBOARD_HREF[dbUser.role as Role];
+        authedUser = dbUser as { fullName: string; avatarUrl: string | null; role: Role };
       }
     }
   } catch {
-    // Auth check failed — just show the public landing page
+    // Auth check failed — show public landing
+  }
+
+  // Fetch 5 featured guides for the carousel
+  const rawGuides = await prisma.guideProfile.findMany({
+    where: {
+      verificationStatus: "APPROVED",
+      deletedAt: null,
+      user: { isActive: true, deletedAt: null },
+    },
+    take: 5,
+    orderBy: { verifiedAt: "desc" },
+    select: {
+      id: true,
+      experienceYears: true,
+      dailyRate: true,
+      currency: true,
+      specializations: true,
+      languages: true,
+      user: { select: { fullName: true, avatarUrl: true } },
+      reviews: { where: { deletedAt: null }, select: { rating: true } },
+    },
+  });
+
+  const guides = rawGuides.map((g) => {
+    const avgRating =
+      g.reviews.length > 0
+        ? Math.round(
+            (g.reviews.reduce((s, r) => s + r.rating, 0) / g.reviews.length) * 10
+          ) / 10
+        : null;
+    return {
+      id: g.id,
+      experienceYears: g.experienceYears,
+      dailyRate: Number(g.dailyRate),
+      currency: g.currency,
+      specializations: g.specializations,
+      languages: g.languages,
+      user: g.user,
+      reviewCount: g.reviews.length,
+      avgRating,
+    };
+  });
+
+  const avatarColors = [
+    "bg-emerald-500",
+    "bg-sky-500",
+    "bg-violet-500",
+    "bg-orange-500",
+    "bg-rose-500",
+  ];
+
+  function getInitials(name: string) {
+    return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
   }
 
   return (
     <div className="min-h-screen bg-white dark:bg-slate-950 flex flex-col">
-      {/* Public Navbar */}
-      <header className="sticky top-0 z-50 border-b bg-white/95 dark:bg-slate-900/95 backdrop-blur shadow-sm">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <div className="flex h-16 items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="flex items-center justify-center h-8 w-8 rounded-lg bg-emerald-50">
-                <Mountain className="h-5 w-5 text-emerald-600" />
+      {authedUser ? (
+        <Navbar user={authedUser} />
+      ) : (
+        <header className="sticky top-0 z-50 border-b bg-white/95 dark:bg-slate-900/95 backdrop-blur shadow-sm">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6">
+            <div className="flex h-16 items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="flex items-center justify-center h-8 w-8 rounded-lg bg-emerald-50">
+                  <Mountain className="h-5 w-5 text-emerald-600" />
+                </div>
+                <span className="font-bold text-lg tracking-tight">NepDiamond</span>
               </div>
-              <span className="font-bold text-lg tracking-tight">NepDiamond</span>
-            </div>
-            <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-600 dark:text-slate-400">
-              <a href="#features" className="hover:text-emerald-600 transition-colors">Features</a>
-              <a href="#how-it-works" className="hover:text-emerald-600 transition-colors">How it works</a>
-              <a href="#for-guides" className="hover:text-emerald-600 transition-colors">For Guides</a>
-            </nav>
-            {dashboardHref ? (
-              <Link
-                href={dashboardHref}
-                className="inline-flex items-center gap-2 rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors shadow-sm"
-              >
-                <LayoutDashboard className="h-4 w-4" /> Go to Dashboard
-              </Link>
-            ) : (
+              <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-600 dark:text-slate-400">
+                <a href="#features" className="hover:text-emerald-600 transition-colors">Features</a>
+                <a href="#how-it-works" className="hover:text-emerald-600 transition-colors">How it works</a>
+                <a href="#for-guides" className="hover:text-emerald-600 transition-colors">For Guides</a>
+              </nav>
               <Link
                 href="/auth/login"
                 className="inline-flex items-center gap-2 rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors shadow-sm"
               >
                 Login <ArrowRight className="h-4 w-4" />
               </Link>
-            )}
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
+      )}
 
       <main className="flex-1">
         {/* Hero */}
@@ -104,10 +147,10 @@ export default async function Home() {
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Link
-                href={dashboardHref ?? "/auth/login"}
+                href="/guides"
                 className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 px-6 py-3 text-base font-semibold text-white transition-colors shadow-lg shadow-emerald-900/40"
               >
-                {dashboardHref ? "Go to Dashboard" : "Start Exploring"} <ArrowRight className="h-5 w-5" />
+                Browse Guides <ArrowRight className="h-5 w-5" />
               </Link>
               <a
                 href="#how-it-works"
@@ -138,8 +181,122 @@ export default async function Home() {
           </div>
         </section>
 
+        {/* Featured Guides Carousel */}
+        <section className="py-16 sm:py-20">
+          <div className="mx-auto max-w-6xl px-6 space-y-8">
+            <div className="flex items-end justify-between">
+              <div className="space-y-1">
+                <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">
+                  Meet Our Guides
+                </h2>
+                <p className="text-slate-500 dark:text-slate-400 text-sm">
+                  Verified local experts ready to lead your Himalayan adventure
+                </p>
+              </div>
+              <Link
+                href="/guides"
+                className="hidden sm:inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 transition-colors"
+              >
+                View all <ChevronRight className="h-4 w-4" />
+              </Link>
+            </div>
+
+            {guides.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-slate-200 dark:border-slate-700 py-16 text-center space-y-3">
+                <Compass className="h-10 w-10 text-slate-300 dark:text-slate-600 mx-auto" />
+                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                  Guides coming soon
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                  {guides.map((guide, i) => (
+                    <div
+                      key={guide.id}
+                      className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 flex flex-col gap-3 hover:shadow-md hover:border-emerald-200 dark:hover:border-emerald-800 transition-all"
+                    >
+                      <div className="flex items-start justify-between">
+                        {guide.user.avatarUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={guide.user.avatarUrl}
+                            alt={guide.user.fullName}
+                            className="h-12 w-12 rounded-full object-cover ring-2 ring-slate-100 dark:ring-slate-800"
+                          />
+                        ) : (
+                          <div
+                            className={`h-12 w-12 rounded-full ${avatarColors[i % avatarColors.length]} flex items-center justify-center text-white font-bold text-base shrink-0`}
+                          >
+                            {getInitials(guide.user.fullName)}
+                          </div>
+                        )}
+                        <span className="flex items-center gap-1 text-xs font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-100 dark:border-emerald-900">
+                          <BadgeCheck className="h-3 w-3" />
+                          Verified
+                        </span>
+                      </div>
+
+                      <div className="min-w-0">
+                        <h3 className="font-semibold text-slate-900 dark:text-white text-sm leading-tight truncate">
+                          {guide.user.fullName}
+                        </h3>
+                        {guide.specializations.length > 0 && (
+                          <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1 truncate mt-0.5">
+                            <MapPin className="h-3 w-3 shrink-0" />
+                            {guide.specializations[0]}
+                          </p>
+                        )}
+                      </div>
+
+                      {guide.avgRating !== null ? (
+                        <div className="flex items-center gap-1">
+                          <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400 shrink-0" />
+                          <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                            {guide.avgRating}
+                          </span>
+                          <span className="text-xs text-slate-400">({guide.reviewCount})</span>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-slate-400">No reviews yet</p>
+                      )}
+
+                      <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mt-auto">
+                        <span className="flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          {guide.experienceYears} yrs
+                        </span>
+                        <span className="font-semibold text-slate-800 dark:text-slate-200">
+                          ${guide.dailyRate}
+                          <span className="font-normal text-slate-400">/day</span>
+                        </span>
+                      </div>
+
+                      <Link
+                        href={`/guides/${guide.id}`}
+                        className="w-full text-center text-xs font-medium rounded-lg border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-600 hover:text-white hover:border-emerald-600 dark:hover:bg-emerald-600 dark:hover:text-white dark:hover:border-emerald-600 py-1.5 transition-all"
+                      >
+                        View Profile
+                      </Link>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex justify-center pt-2">
+                  <Link
+                    href="/guides"
+                    className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-6 py-2.5 text-sm transition-colors shadow-sm"
+                  >
+                    View More Guides <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </div>
+              </>
+            )}
+          </div>
+        </section>
+
         {/* Features */}
-        <section id="features" className="py-20 sm:py-28">
+        <section id="features" className="py-20 sm:py-28 bg-slate-50 dark:bg-slate-900/50">
           <div className="mx-auto max-w-5xl px-6 space-y-14">
             <div className="text-center space-y-3">
               <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 dark:text-white">
@@ -192,7 +349,7 @@ export default async function Home() {
         </section>
 
         {/* How it works */}
-        <section id="how-it-works" className="py-20 bg-slate-50 dark:bg-slate-900/50">
+        <section id="how-it-works" className="py-20">
           <div className="mx-auto max-w-4xl px-6 space-y-12">
             <div className="text-center space-y-3">
               <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 dark:text-white">
@@ -217,7 +374,7 @@ export default async function Home() {
                   description: "Book your guide, plan your itinerary, and head into the Himalayas with confidence.",
                 },
               ].map(({ step, title, description }) => (
-                <div key={step} className="space-y-3 relative">
+                <div key={step} className="space-y-3">
                   <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-emerald-600 text-white font-bold text-lg mx-auto">
                     {step}
                   </div>
@@ -230,7 +387,7 @@ export default async function Home() {
         </section>
 
         {/* For Guides */}
-        <section id="for-guides" className="py-20 sm:py-28">
+        <section id="for-guides" className="py-20 sm:py-28 bg-slate-50 dark:bg-slate-900/50">
           <div className="mx-auto max-w-5xl px-6">
             <div className="rounded-2xl bg-gradient-to-r from-emerald-900 to-teal-900 p-8 sm:p-12 grid sm:grid-cols-2 gap-8 items-center">
               <div className="space-y-5 text-white">
@@ -269,7 +426,7 @@ export default async function Home() {
         </section>
 
         {/* CTA */}
-        <section className="py-20 bg-slate-50 dark:bg-slate-900/50">
+        <section className="py-20">
           <div className="mx-auto max-w-2xl px-6 text-center space-y-6">
             <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 dark:text-white">
               Ready to explore Nepal?
@@ -278,10 +435,10 @@ export default async function Home() {
               Join thousands of travellers and guides on NepDiamond. Your Himalayan adventure starts here.
             </p>
             <Link
-              href={dashboardHref ?? "/auth/login"}
+              href={authedUser ? "/guides" : "/auth/login"}
               className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 px-8 py-3.5 text-base font-semibold text-white transition-colors shadow-lg shadow-emerald-900/20"
             >
-              {dashboardHref ? "Go to Dashboard" : "Get Started Free"} <ArrowRight className="h-5 w-5" />
+              {authedUser ? "Browse Guides" : "Get Started Free"} <ArrowRight className="h-5 w-5" />
             </Link>
           </div>
         </section>

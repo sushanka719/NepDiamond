@@ -1,6 +1,5 @@
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { prisma } from "@/lib/prisma";
-import { redirect } from "next/navigation";
 import Link from "next/link";
 import {
   Star,
@@ -9,23 +8,31 @@ import {
   BadgeCheck,
   Compass,
   ArrowRight,
+  Mountain,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 
+type Role = "TRAVELLER" | "GUIDE" | "ADMIN";
+
 export default async function GuidesPage() {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  let authedUser: { fullName: string; avatarUrl: string | null; role: Role } | null = null;
 
-  if (!user) redirect("/auth/login");
+  try {
+    const supabase = await createSupabaseServerClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-  const dbUser = await prisma.user.findUnique({
-    where: { id: user.id },
-    select: { fullName: true, avatarUrl: true, role: true },
-  });
-
-  if (!dbUser) redirect("/auth/login");
+    if (user) {
+      const dbUser = await prisma.user.findUnique({
+        where: { id: user.id },
+        select: { fullName: true, avatarUrl: true, role: true },
+      });
+      if (dbUser) authedUser = { fullName: dbUser.fullName, avatarUrl: dbUser.avatarUrl, role: dbUser.role as Role };
+    }
+  } catch {
+    // Show public page
+  }
 
   const rawGuides = await prisma.guideProfile.findMany({
     where: {
@@ -94,13 +101,28 @@ export default async function GuidesPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-      <Navbar
-        user={{
-          fullName: dbUser.fullName,
-          avatarUrl: dbUser.avatarUrl,
-          role: dbUser.role as "TRAVELLER" | "GUIDE" | "ADMIN",
-        }}
-      />
+      {authedUser ? (
+        <Navbar user={authedUser} />
+      ) : (
+        <header className="sticky top-0 z-50 border-b bg-white/95 dark:bg-slate-900/95 backdrop-blur shadow-sm">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6">
+            <div className="flex h-16 items-center justify-between">
+              <Link href="/" className="flex items-center gap-2">
+                <div className="flex items-center justify-center h-8 w-8 rounded-lg bg-emerald-50">
+                  <Mountain className="h-5 w-5 text-emerald-600" />
+                </div>
+                <span className="font-bold text-lg tracking-tight">NepDiamond</span>
+              </Link>
+              <Link
+                href="/auth/login"
+                className="inline-flex items-center gap-2 rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors shadow-sm"
+              >
+                Login <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+          </div>
+        </header>
+      )}
 
       <main className="mx-auto max-w-5xl px-6 py-10 space-y-8">
         {/* Header */}
