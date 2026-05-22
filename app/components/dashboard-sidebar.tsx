@@ -16,6 +16,7 @@ import {
   Sparkles,
   HardHat,
   Backpack,
+  UserCog,
 } from "lucide-react";
 
 type Role = "TRAVELLER" | "GUIDE" | "ADMIN";
@@ -40,6 +41,7 @@ function isGroup(entry: SidebarEntry): entry is NavGroup {
 
 const ADMIN_MENU: SidebarEntry[] = [
   { label: "Overview", href: "/dashboard/admin", icon: LayoutDashboard },
+  { label: "Edit Profile", href: "/dashboard/profile", icon: UserCog },
   {
     label: "Guides",
     icon: Users,
@@ -62,6 +64,7 @@ const ADMIN_MENU: SidebarEntry[] = [
 
 const GUIDE_MENU: SidebarEntry[] = [
   { label: "Overview", href: "/dashboard/guide", icon: LayoutDashboard },
+  { label: "Edit Profile", href: "/dashboard/profile", icon: UserCog },
   { label: "Hire Requests", href: "/dashboard/guide/hires", icon: ClipboardList },
   { label: "Schedule", href: "/dashboard/guide/schedule", icon: CalendarDays },
   { label: "Earnings", href: "/dashboard/guide/earnings", icon: TrendingUp },
@@ -69,6 +72,7 @@ const GUIDE_MENU: SidebarEntry[] = [
 
 const TRAVELLER_MENU: SidebarEntry[] = [
   { label: "Overview", href: "/dashboard/traveller", icon: LayoutDashboard },
+  { label: "Edit Profile", href: "/dashboard/profile", icon: UserCog },
   { label: "AI Trek Planner", href: "/dashboard/traveller/planner", icon: Sparkles },
   { label: "Find Guides", href: "/guides", icon: Users },
   { label: "My Hires", href: "/dashboard/traveller/hires", icon: ClipboardList },

@@ -9,6 +9,7 @@ import {
   ChevronDown,
   LayoutDashboard,
   LogOut,
+  UserCog,
 } from "lucide-react";
 
 type Role = "TRAVELLER" | "GUIDE" | "ADMIN";
@@ -149,6 +150,16 @@ export default function Navbar({ user }: NavbarProps) {
                 >
                   <LayoutDashboard className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                   {DASHBOARD_LABEL[user.role]}
+                </Link>
+
+                {/* Edit Profile */}
+                <Link
+                  href="/dashboard/profile"
+                  onClick={() => setOpen(false)}
+                  className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors"
+                >
+                  <UserCog className="h-4 w-4 text-slate-400 shrink-0" />
+                  Edit Profile
                 </Link>
 
                 <div className="border-t border-slate-100 dark:border-slate-800" />
