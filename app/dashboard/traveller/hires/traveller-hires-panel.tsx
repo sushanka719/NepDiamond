@@ -4,6 +4,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { CalendarDays, DollarSign, User, X } from "lucide-react";
 
 interface HireGuide {
@@ -42,6 +43,7 @@ export default function TravellerHiresPanel({ initialHires }: { initialHires: Hi
   const [hires, setHires] = useState(initialHires);
   const [tab, setTab] = useState<typeof TABS[number]>("ALL");
   const [cancelling, setCancelling] = useState<string | null>(null);
+  const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null);
 
   const filtered = tab === "ALL" ? hires : hires.filter((h) => h.status === tab);
 
@@ -163,7 +165,7 @@ export default function TravellerHiresPanel({ initialHires }: { initialHires: Hi
                 {canCancel && (
                   <div className="pt-1">
                     <Button
-                      onClick={() => handleCancel(hire.id)}
+                      onClick={() => setConfirmCancelId(hire.id)}
                       disabled={cancelling === hire.id}
                       className="h-8 text-xs px-3 bg-transparent border border-red-200 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/20"
                     >
@@ -177,6 +179,29 @@ export default function TravellerHiresPanel({ initialHires }: { initialHires: Hi
           })}
         </div>
       )}
+      {/* Cancel hire confirmation dialog */}
+      <Dialog open={!!confirmCancelId} onOpenChange={(o) => !o && setConfirmCancelId(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Cancel hire request?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-slate-500 dark:text-slate-400 py-2">
+            Are you sure you want to cancel this hire request? This cannot be undone.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmCancelId(null)} disabled={!!cancelling}>
+              Keep it
+            </Button>
+            <Button
+              onClick={() => { const id = confirmCancelId!; setConfirmCancelId(null); handleCancel(id); }}
+              disabled={!!cancelling}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Yes, cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -90,6 +90,7 @@ export default function DepartureDetail({ departure: initial, companyGuides }: P
   const router = useRouter();
   const [departure, setDeparture] = useState(initial);
   const [loading, setLoading] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [showAssignGuide, setShowAssignGuide] = useState(false);
   const [selectedGuideId, setSelectedGuideId] = useState("");
   const [guideRole, setGuideRole] = useState("");
@@ -204,7 +205,7 @@ export default function DepartureDetail({ departure: initial, companyGuides }: P
             </Button>
           )}
           {departure.status !== "CANCELLED" && departure.status !== "COMPLETED" && (
-            <Button variant="outline" onClick={handleCancelDeparture} disabled={loading}
+            <Button variant="outline" onClick={() => setShowCancelConfirm(true)} disabled={loading}
               className="border-red-200 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400">
               Cancel
             </Button>
@@ -365,6 +366,30 @@ export default function DepartureDetail({ departure: initial, companyGuides }: P
             <Button variant="outline" onClick={() => setShowAssignGuide(false)} disabled={loading}>Cancel</Button>
             <Button onClick={handleAssignGuide} disabled={loading || !selectedGuideId} className="bg-emerald-600 hover:bg-emerald-700 text-white">
               {loading ? "Assigning…" : "Assign"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Cancel confirmation dialog */}
+      <Dialog open={showCancelConfirm} onOpenChange={(o) => !o && setShowCancelConfirm(false)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Cancel this departure?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-slate-500 dark:text-slate-400 py-2">
+            This will cancel the departure and notify all booked travellers. This action cannot be undone.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCancelConfirm(false)} disabled={loading}>
+              Keep it
+            </Button>
+            <Button
+              onClick={async () => { setShowCancelConfirm(false); await handleCancelDeparture(); }}
+              disabled={loading}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {loading ? "Cancelling…" : "Yes, cancel"}
             </Button>
           </DialogFooter>
         </DialogContent>
