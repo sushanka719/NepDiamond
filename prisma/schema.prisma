@@ -1,0 +1,286 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum Role {
+  ADMIN
+  TRAVELLER
+  GUIDE
+}
+
+enum TrekDifficulty {
+  EASY
+  MODERATE
+  STRENUOUS
+  EXTREME
+}
+
+enum TrekStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum GuideVerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum GuideHireStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum PaymentProvider {
+  KHALTI
+  ESEWA
+  STRIPE
+}
+
+// ============================================================
+// USER
+// ============================================================
+
+model User {
+  id        String   @id @db.Uuid
+  email     String   @unique
+  fullName  String
+  avatarUrl String?
+  phone     String?
+  role      Role     @default(TRAVELLER)
+  isActive  Boolean  @default(true)
+  deletedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  guideProfile   GuideProfile?
+  guideHiresMade GuideHire[]   @relation("RequesterHires")
+  payments       Payment[]
+  reviews        Review[]
+
+  @@index([email])
+  @@index([role])
+  @@map("users")
+}
+
+// ============================================================
+// REGION
+// ============================================================
+
+model Region {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  slug      String   @unique
+  imageUrl  String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  treks Trek[]
+
+  @@map("regions")
+}
+
+// ============================================================
+// TREK
+// ============================================================
+
+model Trek {
+  id              String         @id @default(uuid())
+  regionId        String         @db.Uuid
+  title           String
+  slug            String         @unique
+  description     String
+  difficulty      TrekDifficulty
+  durationDays    Int
+  pricePerPerson  Decimal        @db.Decimal(10, 2)
+  maxParticipants Int
+  status          TrekStatus     @default(DRAFT)
+  coverImageUrl   String?
+  deletedAt       DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  region    Region             @relation(fields: [regionId], references: [id])
+  itinerary TrekItineraryDay[]
+  media     TrekMedia[]
+
+  @@index([regionId])
+  @@index([slug])
+  @@index([status])
+  @@index([difficulty])
+  @@map("treks")
+}
+
+// ============================================================
+// TREK ITINERARY
+// ============================================================
+
+model TrekItineraryDay {
+  id          String   @id @default(uuid())
+  trekId      String   @db.Uuid
+  dayNumber   Int
+  title       String
+  description String
+  createdAt   DateTime @default(now())
+
+  trek Trek @relation(fields: [trekId], references: [id], onDelete: Cascade)
+
+  @@unique([trekId, dayNumber])
+  @@index([trekId])
+  @@map("trek_itinerary_days")
+}
+
+// ============================================================
+// TREK MEDIA
+// ============================================================
+
+model TrekMedia {
+  id        String   @id @default(uuid())
+  trekId    String   @db.Uuid
+  url       String
+  mediaType String
+  caption   String?
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  trek Trek @relation(fields: [trekId], references: [id], onDelete: Cascade)
+
+  @@index([trekId])
+  @@map("trek_media")
+}
+
+// ============================================================
+// GUIDE PROFILE
+// ============================================================
+
+model GuideProfile {
+  id                 String                  @id @default(uuid())
+  userId             String                  @unique @db.Uuid
+  bio                String?
+  experienceYears    Int                     @default(0)
+  languages          String[]
+  dailyRate          Decimal                 @db.Decimal(10, 2)
+  currency           String                  @default("USD")
+  specializations    String[]
+  licenseNumber      String?
+  coverPhotoUrl      String?
+  verificationStatus GuideVerificationStatus @default(PENDING)
+  verifiedAt         DateTime?
+  verifiedById       String?                 @db.Uuid
+  rejectionReason    String?
+  deletedAt          DateTime?
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
+
+  user    User        @relation(fields: [userId], references: [id])
+  hires   GuideHire[]
+  reviews Review[]    @relation("GuideReviews")
+
+  @@index([verificationStatus])
+  @@map("guide_profiles")
+}
+
+// ============================================================
+// GUIDE HIRE
+// ============================================================
+
+model GuideHire {
+  id              String          @id @default(uuid())
+  requesterId     String          @db.Uuid
+  guideId         String          @db.Uuid
+  status          GuideHireStatus @default(PENDING)
+  startDate       DateTime
+  endDate         DateTime
+  daysCount       Int
+  dailyRate       Decimal         @db.Decimal(10, 2)
+  totalAmount     Decimal         @db.Decimal(10, 2)
+  currency        String          @default("USD")
+  requirements    String?
+  rejectionReason String?
+  acceptedAt      DateTime?
+  completedAt     DateTime?
+  cancelledAt     DateTime?
+  deletedAt       DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  requester User         @relation("RequesterHires", fields: [requesterId], references: [id])
+  guide     GuideProfile @relation(fields: [guideId], references: [id])
+
+  payment Payment?
+  review  Review?
+
+  @@index([requesterId])
+  @@index([guideId])
+  @@index([status])
+  @@map("guide_hires")
+}
+
+// ============================================================
+// PAYMENT
+// ============================================================
+
+model Payment {
+  id                    String          @id @default(uuid())
+  userId                String          @db.Uuid
+  guideHireId           String          @unique @db.Uuid
+  amount                Decimal         @db.Decimal(10, 2)
+  currency              String          @default("USD")
+  status                PaymentStatus   @default(PENDING)
+  provider              PaymentProvider
+  providerTransactionId String?
+  providerMetadata      Json?
+  paidAt                DateTime?
+  failureReason         String?
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+
+  user      User      @relation(fields: [userId], references: [id])
+  guideHire GuideHire @relation(fields: [guideHireId], references: [id])
+
+  @@index([userId])
+  @@index([status])
+  @@map("payments")
+}
+
+// ============================================================
+// REVIEW
+// ============================================================
+
+model Review {
+  id          String    @id @default(uuid())
+  reviewerId  String    @db.Uuid
+  guideHireId String    @unique @db.Uuid
+  guideId     String    @db.Uuid
+  rating      Int
+  comment     String?
+  deletedAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  reviewer     User         @relation(fields: [reviewerId], references: [id])
+  guideProfile GuideProfile @relation("GuideReviews", fields: [guideId], references: [id])
+  guideHire    GuideHire    @relation(fields: [guideHireId], references: [id])
+
+  @@index([guideId])
+  @@index([reviewerId])
+  @@map("reviews")
+}
