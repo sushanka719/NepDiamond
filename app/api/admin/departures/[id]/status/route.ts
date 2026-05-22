@@ -35,7 +35,12 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
   const departure = await prisma.trekDeparture.findUnique({
     where: { id, deletedAt: null },
-    select: { id: true, status: true },
+    select: {
+      id: true,
+      status: true,
+      maxParticipants: true,
+      _count: { select: { guides: true } },
+    },
   });
   if (!departure) return Response.json({ error: "Departure not found" }, { status: 404 });
 
@@ -43,6 +48,27 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   if (!allowed.includes(body.status)) {
     return Response.json(
       { error: `Cannot transition from ${departure.status} to ${body.status}` },
+      { status: 409 }
+    );
+  }
+
+  // FULL → SCHEDULED: only allowed if a spot actually opened (cancelled booking)
+  if (departure.status === "FULL" && body.status === "SCHEDULED") {
+    const confirmedCount = await prisma.trekBooking.count({
+      where: { departureId: id, status: "CONFIRMED", deletedAt: null },
+    });
+    if (confirmedCount >= departure.maxParticipants) {
+      return Response.json(
+        { error: "Cannot reopen — all spots are still confirmed. Cancel a booking first." },
+        { status: 409 }
+      );
+    }
+  }
+
+  // FULL → DEPARTED: requires at least one guide assigned
+  if (body.status === "DEPARTED" && departure._count.guides === 0) {
+    return Response.json(
+      { error: "Cannot mark as departed — no guides have been assigned to this departure." },
       { status: 409 }
     );
   }

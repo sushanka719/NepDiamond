@@ -40,19 +40,24 @@ export async function POST(request: NextRequest, { params }: Params) {
 
   if (!body.departureId) return Response.json({ error: "departureId is required" }, { status: 400 });
 
+  // Look up without status filter to give specific errors for FULL/CANCELLED
   const departure = await prisma.trekDeparture.findFirst({
-    where: {
-      id: body.departureId,
-      deletedAt: null,
-      status: "SCHEDULED",
-      trek: { slug, deletedAt: null },
-    },
-    select: { id: true, pricePerPerson: true, maxParticipants: true, currency: true, departureDate: true },
+    where: { id: body.departureId, deletedAt: null, trek: { slug, deletedAt: null } },
+    select: { id: true, status: true, pricePerPerson: true, maxParticipants: true, currency: true, departureDate: true },
   });
-  if (!departure) {
-    return Response.json({ error: "Departure not found or not open for booking" }, { status: 404 });
-  }
 
+  if (!departure) {
+    return Response.json({ error: "Departure not found" }, { status: 404 });
+  }
+  if (departure.status === "FULL") {
+    return Response.json({ error: "This departure is fully booked" }, { status: 409 });
+  }
+  if (departure.status === "CANCELLED") {
+    return Response.json({ error: "This departure has been cancelled" }, { status: 409 });
+  }
+  if (departure.status !== "SCHEDULED") {
+    return Response.json({ error: "This departure is no longer open for booking" }, { status: 409 });
+  }
   if (departure.departureDate <= new Date()) {
     return Response.json({ error: "This departure date has already passed" }, { status: 409 });
   }
@@ -62,48 +67,51 @@ export async function POST(request: NextRequest, { params }: Params) {
     select: { id: true, status: true },
   });
   if (existingBooking) {
-    return Response.json({ error: "You already have a booking for this departure" }, { status: 409 });
+    const msg = existingBooking.status === "CANCELLED"
+      ? "Your previous booking was cancelled. Contact support to rebook."
+      : "You already have a booking for this departure";
+    return Response.json({ error: msg }, { status: 409 });
   }
 
-  const confirmedCount = await prisma.trekBooking.count({
-    where: { departureId: body.departureId, status: "CONFIRMED", deletedAt: null },
-  });
-  if (confirmedCount >= departure.maxParticipants) {
-    return Response.json({ error: "This departure is fully booked" }, { status: 409 });
-  }
+  // Re-verify spot count atomically inside a transaction to prevent race conditions
+  let booking: { id: string; status: string; amount: object; currency: string; confirmedAt: Date | null; createdAt: Date } | null = null;
+  let isFull = false;
 
-  const { booking, isFull } = await prisma.$transaction(async (tx) => {
-    const booking = await tx.trekBooking.create({
-      data: {
-        departureId: body.departureId!,
-        userId: user.id,
-        status: "CONFIRMED",
-        amount: departure.pricePerPerson,
-        currency: departure.currency,
-        confirmedAt: new Date(),
-      },
-      select: {
-        id: true,
-        status: true,
-        amount: true,
-        currency: true,
-        confirmedAt: true,
-        createdAt: true,
-      },
-    });
-
-    const newCount = confirmedCount + 1;
-    const isFull = newCount >= departure.maxParticipants;
-
-    if (isFull) {
-      await tx.trekDeparture.update({
-        where: { id: body.departureId },
-        data: { status: "FULL" },
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      const confirmedCount = await tx.trekBooking.count({
+        where: { departureId: body.departureId!, status: "CONFIRMED", deletedAt: null },
       });
-    }
+      if (confirmedCount >= departure.maxParticipants) {
+        throw new Error("DEPARTURE_FULL");
+      }
 
-    return { booking, isFull };
-  });
+      const created = await tx.trekBooking.create({
+        data: {
+          departureId: body.departureId!,
+          userId: user.id,
+          status: "CONFIRMED",
+          amount: departure.pricePerPerson,
+          currency: departure.currency,
+          confirmedAt: new Date(),
+        },
+        select: { id: true, status: true, amount: true, currency: true, confirmedAt: true, createdAt: true },
+      });
+
+      const nowFull = confirmedCount + 1 >= departure.maxParticipants;
+      if (nowFull) {
+        await tx.trekDeparture.update({ where: { id: body.departureId }, data: { status: "FULL" } });
+      }
+      return { booking: created, isFull: nowFull };
+    });
+    booking = result.booking;
+    isFull = result.isFull;
+  } catch (err) {
+    if (err instanceof Error && err.message === "DEPARTURE_FULL") {
+      return Response.json({ error: "This departure just filled up — no spots remaining" }, { status: 409 });
+    }
+    throw err;
+  }
 
   return Response.json({ booking, departureFull: isFull }, { status: 201 });
 }

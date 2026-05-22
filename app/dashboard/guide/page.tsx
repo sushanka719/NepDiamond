@@ -1,9 +1,10 @@
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Clock, CheckCircle, XCircle } from "lucide-react";
+import { Clock, CheckCircle, XCircle, TrendingUp, CalendarDays, Star, ClipboardList } from "lucide-react";
 
 const STATUS_CONFIG = {
   PENDING: {
@@ -42,6 +43,7 @@ export default async function GuideDashboardPage() {
       role: true,
       guideProfile: {
         select: {
+          id: true,
           verificationStatus: true,
           bio: true,
           experienceYears: true,
@@ -58,9 +60,35 @@ export default async function GuideDashboardPage() {
   if (!dbUser || dbUser.role !== "GUIDE") redirect("/auth/select-role");
 
   const profile = dbUser.guideProfile;
+  const guideId = profile?.id;
+
+  const [pendingCount, acceptedCount, completedAgg, upcomingHire, ratings] = guideId
+    ? await Promise.all([
+        prisma.guideHire.count({ where: { guideId, status: "PENDING", deletedAt: null } }),
+        prisma.guideHire.count({ where: { guideId, status: "ACCEPTED", deletedAt: null } }),
+        prisma.guideHire.aggregate({
+          where: { guideId, status: "COMPLETED", deletedAt: null },
+          _sum: { totalAmount: true },
+          _count: { id: true },
+        }),
+        prisma.guideHire.findFirst({
+          where: { guideId, status: "ACCEPTED", startDate: { gte: new Date() }, deletedAt: null },
+          orderBy: { startDate: "asc" },
+          select: { startDate: true, daysCount: true, requester: { select: { fullName: true } } },
+        }),
+        prisma.review.findMany({ where: { guideId, deletedAt: null }, select: { rating: true } }),
+      ])
+    : [0, 0, { _sum: { totalAmount: null }, _count: { id: 0 } }, null, []];
   const status = (profile?.verificationStatus ?? "PENDING") as keyof typeof STATUS_CONFIG;
   const statusConf = STATUS_CONFIG[status];
   const StatusIcon = statusConf.icon;
+
+  const lifetimeEarnings = Number((completedAgg as { _sum: { totalAmount: unknown } })._sum.totalAmount ?? 0);
+  const completedCount = (completedAgg as { _count: { id: number } })._count.id;
+  const avgRating = (ratings as { rating: number }[]).length > 0
+    ? Math.round(((ratings as { rating: number }[]).reduce((s, r) => s + r.rating, 0) / (ratings as { rating: number }[]).length) * 10) / 10
+    : null;
+  const currency = profile?.currency ?? "USD";
 
   return (
     <div className="space-y-6">
@@ -176,6 +204,94 @@ export default async function GuideDashboardPage() {
               </a>
             </CardContent>
           </Card>
+        )}
+
+        {profile && (
+          <>
+            {/* Activity stats */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {[
+                {
+                  href: "/dashboard/guide/hires",
+                  icon: ClipboardList,
+                  label: "Pending Requests",
+                  value: pendingCount as number,
+                  sub: "awaiting response",
+                  accent: (pendingCount as number) > 0 ? "text-amber-600" : "text-slate-700 dark:text-slate-300",
+                  bg: "bg-amber-50 dark:bg-amber-950/30",
+                  iconColor: "text-amber-600",
+                },
+                {
+                  href: "/dashboard/guide/schedule",
+                  icon: CalendarDays,
+                  label: "Active Hires",
+                  value: acceptedCount as number,
+                  sub: "accepted & ongoing",
+                  accent: "text-slate-700 dark:text-slate-300",
+                  bg: "bg-blue-50 dark:bg-blue-950/30",
+                  iconColor: "text-blue-600",
+                },
+                {
+                  href: "/dashboard/guide/earnings",
+                  icon: TrendingUp,
+                  label: "Lifetime Earned",
+                  value: `${lifetimeEarnings.toLocaleString()} ${currency}`,
+                  sub: `${completedCount} completed`,
+                  accent: "text-emerald-600 dark:text-emerald-400",
+                  bg: "bg-emerald-50 dark:bg-emerald-950/30",
+                  iconColor: "text-emerald-600",
+                },
+                {
+                  href: "/dashboard/guide/earnings",
+                  icon: Star,
+                  label: "Rating",
+                  value: avgRating !== null ? `${avgRating} / 5` : "—",
+                  sub: avgRating !== null ? `${(ratings as unknown[]).length} review${(ratings as unknown[]).length !== 1 ? "s" : ""}` : "No reviews yet",
+                  accent: "text-slate-700 dark:text-slate-300",
+                  bg: "bg-amber-50 dark:bg-amber-950/30",
+                  iconColor: "text-amber-500",
+                },
+              ].map(({ href, icon: Icon, label, value, sub, accent, bg, iconColor }) => (
+                <Link
+                  key={label}
+                  href={href}
+                  className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 hover:border-emerald-200 dark:hover:border-emerald-800 transition-colors"
+                >
+                  <div className={`inline-flex h-8 w-8 items-center justify-center rounded-lg ${bg} mb-2`}>
+                    <Icon className={`h-4 w-4 ${iconColor}`} />
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{label}</p>
+                  <p className={`text-xl font-bold mt-0.5 ${accent}`}>{value}</p>
+                  <p className="text-xs text-slate-400 mt-0.5">{sub}</p>
+                </Link>
+              ))}
+            </div>
+
+            {/* Upcoming hire preview */}
+            {upcomingHire && (
+              <div className="rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/20 p-4 flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <CalendarDays className="h-5 w-5 text-emerald-600 shrink-0" />
+                  <div>
+                    <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+                      Next hire: {(upcomingHire as { requester: { fullName: string } }).requester.fullName}
+                    </p>
+                    <p className="text-xs text-emerald-700 dark:text-emerald-400">
+                      {new Date((upcomingHire as { startDate: Date }).startDate).toLocaleDateString("en-US", { weekday: "short", day: "numeric", month: "long" })}
+                      {" · "}
+                      {(upcomingHire as { daysCount: number }).daysCount} day{(upcomingHire as { daysCount: number }).daysCount !== 1 ? "s" : ""}
+                    </p>
+                  </div>
+                </div>
+                <Link
+                  href="/dashboard/guide/schedule"
+                  className="text-xs font-medium text-emerald-700 dark:text-emerald-400 hover:underline shrink-0"
+                >
+                  View schedule →
+                </Link>
+              </div>
+            )}
+          </>
         )}
     </div>
   );
