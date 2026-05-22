@@ -22,6 +22,12 @@ export async function GET(request: NextRequest) {
 
   const { user } = data.session;
 
+  // Check existence before upsert to detect first-ever sign-in
+  const existing = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { role: true },
+  });
+
   // Upsert user in our DB — id mirrors Supabase auth UID
   await prisma.user.upsert({
     where: { id: user.id },
@@ -45,21 +51,19 @@ export async function GET(request: NextRequest) {
     },
   });
 
-  // Check if user already has a role set beyond default
-  const dbUser = await prisma.user.findUnique({
-    where: { id: user.id },
-    select: { role: true, guideProfile: { select: { id: true } } },
-  });
+  // First-ever sign-in — send to role selection
+  if (!existing) {
+    return Response.redirect(`${origin}/auth/select-role`);
+  }
 
-  // Route based on existing role
-  if (dbUser?.role === "GUIDE") {
+  // Returning user — route to their dashboard
+  if (existing.role === "GUIDE") {
     return Response.redirect(`${origin}/dashboard/guide`);
   }
 
-  if (dbUser?.role === "ADMIN") {
+  if (existing.role === "ADMIN") {
     return Response.redirect(`${origin}/dashboard/admin`);
   }
 
-  // New / TRAVELLER users → pick their role
-  return Response.redirect(`${origin}/auth/select-role`);
+  return Response.redirect(`${origin}/dashboard/traveller`);
 }
