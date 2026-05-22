@@ -3,18 +3,34 @@ import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Mountain, Clock, CheckCircle, XCircle } from "lucide-react";
-import LogoutButton from "@/components/logout-button";
+import { Clock, CheckCircle, XCircle } from "lucide-react";
+import Navbar from "@/components/navbar";
 
 const STATUS_CONFIG = {
-  PENDING: { label: "Pending review", icon: Clock, className: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400" },
-  APPROVED: { label: "Verified", icon: CheckCircle, className: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400" },
-  REJECTED: { label: "Rejected", icon: XCircle, className: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400" },
+  PENDING: {
+    label: "Pending review",
+    icon: Clock,
+    className:
+      "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
+  },
+  APPROVED: {
+    label: "Verified",
+    icon: CheckCircle,
+    className:
+      "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400",
+  },
+  REJECTED: {
+    label: "Rejected",
+    icon: XCircle,
+    className: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
+  },
 };
 
 export default async function GuideDashboardPage() {
   const supabase = await createSupabaseServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   if (!user) redirect("/auth/login");
 
@@ -43,33 +59,19 @@ export default async function GuideDashboardPage() {
   if (!dbUser || dbUser.role !== "GUIDE") redirect("/auth/select-role");
 
   const profile = dbUser.guideProfile;
-  const status = profile?.verificationStatus ?? "PENDING";
+  const status = (profile?.verificationStatus ?? "PENDING") as keyof typeof STATUS_CONFIG;
   const statusConf = STATUS_CONFIG[status];
   const StatusIcon = statusConf.icon;
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-      {/* Header */}
-      <header className="border-b bg-white dark:bg-slate-900 px-6 py-4">
-        <div className="mx-auto max-w-5xl flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Mountain className="h-6 w-6 text-emerald-600" />
-            <span className="font-bold text-lg">NepDiamond</span>
-          </div>
-          <div className="flex items-center gap-3">
-            {dbUser.avatarUrl && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={dbUser.avatarUrl}
-                alt={dbUser.fullName}
-                className="h-8 w-8 rounded-full object-cover"
-              />
-            )}
-            <span className="text-sm font-medium hidden sm:block">{dbUser.fullName}</span>
-            <LogoutButton />
-          </div>
-        </div>
-      </header>
+      <Navbar
+        user={{
+          fullName: dbUser.fullName,
+          avatarUrl: dbUser.avatarUrl,
+          role: "GUIDE",
+        }}
+      />
 
       <main className="mx-auto max-w-5xl px-6 py-8 space-y-6">
         <div className="flex items-center justify-between">
@@ -87,7 +89,8 @@ export default async function GuideDashboardPage() {
           <Card className="border-yellow-200 bg-yellow-50 dark:bg-yellow-950/20 dark:border-yellow-900">
             <CardContent className="py-4">
               <p className="text-sm text-yellow-800 dark:text-yellow-400">
-                Your profile is under review. An admin will verify your details shortly. You'll be visible to travellers once approved.
+                Your profile is under review. An admin will verify your details
+                shortly. You&apos;ll be visible to travellers once approved.
               </p>
             </CardContent>
           </Card>
@@ -96,9 +99,16 @@ export default async function GuideDashboardPage() {
         {status === "REJECTED" && profile?.rejectionReason && (
           <Card className="border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-900">
             <CardContent className="py-4">
-              <p className="text-sm font-medium text-red-800 dark:text-red-400 mb-1">Your profile was rejected</p>
-              <p className="text-sm text-red-700 dark:text-red-300">{profile.rejectionReason}</p>
-              <a href="/auth/guide-profile" className="text-sm underline mt-2 inline-block text-red-800 dark:text-red-400">
+              <p className="text-sm font-medium text-red-800 dark:text-red-400 mb-1">
+                Your profile was rejected
+              </p>
+              <p className="text-sm text-red-700 dark:text-red-300">
+                {profile.rejectionReason}
+              </p>
+              <a
+                href="/auth/guide-profile"
+                className="text-sm underline mt-2 inline-block text-red-800 dark:text-red-400"
+              >
                 Resubmit profile →
               </a>
             </CardContent>
@@ -109,38 +119,53 @@ export default async function GuideDashboardPage() {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Daily Rate</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Daily Rate
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-2xl font-bold">
                   {Number(profile.dailyRate).toFixed(0)}{" "}
-                  <span className="text-base font-normal text-muted-foreground">{profile.currency}</span>
+                  <span className="text-base font-normal text-muted-foreground">
+                    {profile.currency}
+                  </span>
                 </p>
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Experience</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Experience
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-2xl font-bold">
                   {profile.experienceYears}{" "}
-                  <span className="text-base font-normal text-muted-foreground">years</span>
+                  <span className="text-base font-normal text-muted-foreground">
+                    years
+                  </span>
                 </p>
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Languages</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Languages
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex flex-wrap gap-1">
-                  {profile.languages.length > 0
-                    ? profile.languages.map((l) => (
-                        <Badge key={l} variant="secondary" className="text-xs">{l}</Badge>
-                      ))
-                    : <span className="text-muted-foreground text-sm">None listed</span>
-                  }
+                  {profile.languages.length > 0 ? (
+                    profile.languages.map((l: string) => (
+                      <Badge key={l} variant="secondary" className="text-xs">
+                        {l}
+                      </Badge>
+                    ))
+                  ) : (
+                    <span className="text-muted-foreground text-sm">
+                      None listed
+                    </span>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -150,7 +175,9 @@ export default async function GuideDashboardPage() {
         {!profile && (
           <Card>
             <CardContent className="py-8 text-center space-y-3">
-              <p className="text-muted-foreground">You haven't set up your guide profile yet.</p>
+              <p className="text-muted-foreground">
+                You haven&apos;t set up your guide profile yet.
+              </p>
               <a
                 href="/auth/guide-profile"
                 className="inline-flex items-center justify-center rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 transition-colors"
