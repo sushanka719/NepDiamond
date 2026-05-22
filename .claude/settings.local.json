@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx prisma *)",
+      "Bash(DIRECT_URL=\"postgresql://postgres.upgmeabtqecjcubfnlok:sushanka%40123@aws-1-ap-southeast-1.pooler.supabase.com:5432/postgres\" npx prisma *)",
+      "Bash(DIRECT_URL=\"postgresql://postgres.upgmeabtqecjcubfnlok:sushanka%40123@aws-1-ap-southeast-1.pooler.supabase.com:5432/postgres\" PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION=\"yes\" npx prisma *)",
+      "Bash(npx tsc *)",
+      "Bash(supabase --version)",
+      "Bash(supabase projects *)"
+    ]
+  }
+}

@@ -87,7 +87,7 @@ model User {
 // ============================================================
 
 model Region {
-  id        String   @id @default(uuid())
+  id        String   @id @default(uuid()) @db.Uuid
   name      String   @unique
   slug      String   @unique
   imageUrl  String?
@@ -104,7 +104,7 @@ model Region {
 // ============================================================
 
 model Trek {
-  id              String         @id @default(uuid())
+  id              String         @id @default(uuid()) @db.Uuid
   regionId        String         @db.Uuid
   title           String
   slug            String         @unique
@@ -135,7 +135,7 @@ model Trek {
 // ============================================================
 
 model TrekItineraryDay {
-  id          String   @id @default(uuid())
+  id          String   @id @default(uuid()) @db.Uuid
   trekId      String   @db.Uuid
   dayNumber   Int
   title       String
@@ -154,7 +154,7 @@ model TrekItineraryDay {
 // ============================================================
 
 model TrekMedia {
-  id        String   @id @default(uuid())
+  id        String   @id @default(uuid()) @db.Uuid
   trekId    String   @db.Uuid
   url       String
   mediaType String
@@ -173,7 +173,7 @@ model TrekMedia {
 // ============================================================
 
 model GuideProfile {
-  id                 String                  @id @default(uuid())
+  id                 String                  @id @default(uuid()) @db.Uuid
   userId             String                  @unique @db.Uuid
   bio                String?
   experienceYears    Int                     @default(0)
@@ -191,20 +191,41 @@ model GuideProfile {
   createdAt          DateTime                @default(now())
   updatedAt          DateTime                @updatedAt
 
-  user    User        @relation(fields: [userId], references: [id])
-  hires   GuideHire[]
-  reviews Review[]    @relation("GuideReviews")
+  user         User               @relation(fields: [userId], references: [id])
+  hires        GuideHire[]
+  reviews      Review[]           @relation("GuideReviews")
+  availability GuideAvailability[]
 
   @@index([verificationStatus])
   @@map("guide_profiles")
 }
+
+model GuideAvailability {
+  id        String   @id @default(uuid()) @db.Uuid
+  guideId   String   @db.Uuid
+
+  startDate DateTime
+  endDate   DateTime
+
+  isBlocked Boolean  @default(false) 
+  reason    String?
+
+  createdAt DateTime @default(now())
+
+  guide GuideProfile @relation(fields: [guideId], references: [id], onDelete: Cascade)
+
+  @@index([guideId])
+  @@index([startDate, endDate])
+  @@map("guide_availability")
+}
+
 
 // ============================================================
 // GUIDE HIRE
 // ============================================================
 
 model GuideHire {
-  id              String          @id @default(uuid())
+  id              String          @id @default(uuid()) @db.Uuid
   requesterId     String          @db.Uuid
   guideId         String          @db.Uuid
   status          GuideHireStatus @default(PENDING)
@@ -240,7 +261,7 @@ model GuideHire {
 // ============================================================
 
 model Payment {
-  id                    String          @id @default(uuid())
+  id                    String          @id @default(uuid()) @db.Uuid
   userId                String          @db.Uuid
   guideHireId           String          @unique @db.Uuid
   amount                Decimal         @db.Decimal(10, 2)
@@ -267,7 +288,7 @@ model Payment {
 // ============================================================
 
 model Review {
-  id          String    @id @default(uuid())
+  id          String    @id @default(uuid()) @db.Uuid
   reviewerId  String    @db.Uuid
   guideHireId String    @unique @db.Uuid
   guideId     String    @db.Uuid
