@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { CalendarDays, DollarSign } from "lucide-react";
+import GuideCalendar from "./guide-calendar";
 
 interface Props {
   guideId: string;
@@ -15,14 +16,30 @@ interface Props {
   currency: string;
 }
 
+interface BookedRange {
+  startDate: string;
+  endDate: string;
+}
+
+type Step = "start" | "end";
+
 export default function HireForm({ guideId, guideName, dailyRate, currency }: Props) {
   const router = useRouter();
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [requirements, setRequirements] = useState("");
   const [loading, setLoading] = useState(false);
+  const [bookedRanges, setBookedRanges] = useState<BookedRange[]>([]);
+  const [step, setStep] = useState<Step>("start");
 
   const today = new Date().toISOString().split("T")[0];
+
+  useEffect(() => {
+    fetch(`/api/guides/${guideId}/booked-dates`)
+      .then((r) => r.json())
+      .then((data) => setBookedRanges(data.ranges ?? []))
+      .catch(() => {});
+  }, [guideId]);
 
   const daysCount =
     startDate && endDate && endDate > startDate
@@ -33,6 +50,26 @@ export default function HireForm({ guideId, guideName, dailyRate, currency }: Pr
       : 0;
 
   const totalAmount = daysCount * dailyRate;
+
+  function handleStartSelect(date: string) {
+    setStartDate(date);
+    setEndDate("");
+    setStep("end");
+  }
+
+  function handleEndSelect(date: string) {
+    if (date <= startDate) {
+      toast.error("End date must be after start date");
+      return;
+    }
+    setEndDate(date);
+  }
+
+  function resetDates() {
+    setStartDate("");
+    setEndDate("");
+    setStep("start");
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -76,34 +113,51 @@ export default function HireForm({ guideId, guideName, dailyRate, currency }: Pr
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-1.5">
-        <Label htmlFor="start-date" className="flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-400">
-          <CalendarDays className="h-3.5 w-3.5" /> Start date
-        </Label>
-        <input
-          id="start-date"
-          type="date"
-          required
-          min={today}
-          value={startDate}
-          onChange={(e) => setStartDate(e.target.value)}
-          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-        />
-      </div>
+      {/* Date selection */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <Label className="flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-400">
+            <CalendarDays className="h-3.5 w-3.5" />
+            {step === "start" ? "Select start date" : "Select end date"}
+          </Label>
+          {(startDate || endDate) && (
+            <button
+              type="button"
+              onClick={resetDates}
+              className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+            >
+              Reset
+            </button>
+          )}
+        </div>
 
-      <div className="space-y-1.5">
-        <Label htmlFor="end-date" className="flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-400">
-          <CalendarDays className="h-3.5 w-3.5" /> End date
-        </Label>
-        <input
-          id="end-date"
-          type="date"
-          required
-          min={startDate || today}
-          value={endDate}
-          onChange={(e) => setEndDate(e.target.value)}
-          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-        />
+        {/* Selected range display */}
+        {(startDate || endDate) && (
+          <div className="flex items-center gap-2 text-xs bg-slate-50 dark:bg-slate-800/50 rounded-lg px-3 py-2">
+            <span className={`font-medium ${startDate ? "text-emerald-700 dark:text-emerald-400" : "text-slate-400"}`}>
+              {startDate || "—"}
+            </span>
+            <span className="text-slate-300 dark:text-slate-600">→</span>
+            <span className={`font-medium ${endDate ? "text-emerald-700 dark:text-emerald-400" : "text-slate-400"}`}>
+              {endDate || "pick end date"}
+            </span>
+          </div>
+        )}
+
+        <div className="border border-slate-200 dark:border-slate-700 rounded-xl p-3 bg-white dark:bg-slate-900">
+          <GuideCalendar
+            value={step === "start" ? startDate : endDate}
+            onChange={step === "start" ? handleStartSelect : handleEndSelect}
+            minDate={step === "start" ? today : startDate ? (() => {
+              const next = new Date(startDate);
+              next.setDate(next.getDate() + 1);
+              return next.toISOString().split("T")[0];
+            })() : today}
+            bookedRanges={bookedRanges}
+            selectedStart={startDate}
+            selectedEnd={endDate}
+          />
+        </div>
       </div>
 
       {daysCount > 0 && (
@@ -147,7 +201,7 @@ export default function HireForm({ guideId, guideName, dailyRate, currency }: Pr
       </Button>
 
       <p className="text-xs text-center text-slate-400 leading-relaxed">
-        You won't be charged yet. The guide must accept before any payment is made.
+        You won&apos;t be charged yet. The guide must accept before any payment is made.
       </p>
     </form>
   );

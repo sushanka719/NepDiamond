@@ -94,7 +94,18 @@ export default function TreksManager({ initialTreks, regions }: Props) {
   });
 
   function setField(k: keyof typeof form, v: string) {
-    setForm((prev) => ({ ...prev, [k]: v }));
+    setForm((prev) => {
+      const next = { ...prev, [k]: v };
+      // Auto-calculate returnDate when departure date or duration changes
+      const dep = k === "departureDate" ? v : next.departureDate;
+      const dur = k === "durationDays" ? v : next.durationDays;
+      if (dep && dur && Number(dur) > 0) {
+        const returnD = new Date(dep);
+        returnD.setDate(returnD.getDate() + Number(dur) - 1);
+        next.returnDate = returnD.toISOString().split("T")[0];
+      }
+      return next;
+    });
   }
 
   async function handleCreate() {
@@ -310,8 +321,19 @@ export default function TreksManager({ initialTreks, regions }: Props) {
                 <Input type="date" value={form.departureDate} onChange={(e) => setField("departureDate", e.target.value)} />
               </div>
               <div className="space-y-1.5">
-                <Label>Return date (optional)</Label>
-                <Input type="date" value={form.returnDate} onChange={(e) => setField("returnDate", e.target.value)} />
+                <Label className="flex items-center gap-1.5">
+                  Return date
+                  {form.returnDate && form.departureDate && form.durationDays && (
+                    <span className="text-xs font-normal text-emerald-600 dark:text-emerald-400">(auto)</span>
+                  )}
+                </Label>
+                <Input
+                  type="date"
+                  value={form.returnDate}
+                  readOnly={!!(form.departureDate && form.durationDays)}
+                  onChange={(e) => setField("returnDate", e.target.value)}
+                  className={form.departureDate && form.durationDays ? "bg-slate-50 dark:bg-slate-800 text-slate-500 cursor-not-allowed" : ""}
+                />
               </div>
             </div>
             <div className="space-y-1.5">

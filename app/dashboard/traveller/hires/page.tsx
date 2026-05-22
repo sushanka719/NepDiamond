@@ -37,6 +37,8 @@ export default async function TravellerHiresPage() {
           user: { select: { fullName: true, avatarUrl: true } },
         },
       },
+      review: { select: { id: true, rating: true, comment: true } },
+      payment: { select: { id: true, status: true } },
     },
   });
 

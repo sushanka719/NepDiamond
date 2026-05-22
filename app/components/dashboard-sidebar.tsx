@@ -58,6 +58,7 @@ const ADMIN_MENU: SidebarEntry[] = [
       { label: "Treks", href: "/dashboard/admin/treks", icon: Compass },
       { label: "Departures", href: "/dashboard/admin/departures", icon: CalendarDays },
       { label: "Company Guides", href: "/dashboard/admin/company-guides", icon: HardHat },
+      { label: "Payout Requests", href: "/dashboard/admin/payout-requests", icon: UserCog },
     ],
   },
 ];

@@ -57,6 +57,13 @@ export default async function GuideEarningsPage() {
           endDate: true,
           completedAt: true,
           requester: { select: { fullName: true, avatarUrl: true } },
+          payment: {
+            select: {
+              id: true,
+              status: true,
+              payoutRequest: { select: { id: true, status: true } },
+            },
+          },
         },
       }),
       prisma.guideHire.findMany({
@@ -115,6 +122,9 @@ export default async function GuideEarningsPage() {
       startDate: h.startDate.toISOString(),
       endDate: h.endDate.toISOString(),
       completedAt: h.completedAt?.toISOString() ?? null,
+      payment: h.payment
+        ? { id: h.payment.id, status: h.payment.status, payoutRequest: h.payment.payoutRequest ?? null }
+        : null,
     })),
   };
 

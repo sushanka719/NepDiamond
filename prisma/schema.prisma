@@ -71,6 +71,13 @@ enum BookingStatus {
   REFUNDED
 }
 
+enum PayoutStatus {
+  PENDING
+  PROCESSING
+  PAID
+  REJECTED
+}
+
 // ============================================================
 // USER
 // ============================================================
@@ -209,10 +216,11 @@ model GuideProfile {
   createdAt          DateTime                @default(now())
   updatedAt          DateTime                @updatedAt
 
-  user         User               @relation(fields: [userId], references: [id])
-  hires        GuideHire[]
-  reviews      Review[]           @relation("GuideReviews")
-  availability GuideAvailability[]
+  user           User               @relation(fields: [userId], references: [id])
+  hires          GuideHire[]
+  reviews        Review[]           @relation("GuideReviews")
+  availability   GuideAvailability[]
+  payoutRequests PayoutRequest[]
 
   @@index([verificationStatus])
   @@map("guide_profiles")
@@ -293,12 +301,36 @@ model Payment {
   createdAt             DateTime        @default(now())
   updatedAt             DateTime        @updatedAt
 
-  user      User      @relation(fields: [userId], references: [id])
-  guideHire GuideHire @relation(fields: [guideHireId], references: [id])
+  user           User           @relation(fields: [userId], references: [id])
+  guideHire      GuideHire      @relation(fields: [guideHireId], references: [id])
+  payoutRequest  PayoutRequest?
 
   @@index([userId])
   @@index([status])
   @@map("payments")
+}
+
+// ============================================================
+// PAYOUT REQUEST
+// ============================================================
+
+model PayoutRequest {
+  id          String       @id @default(uuid()) @db.Uuid
+  guideId     String       @db.Uuid
+  paymentId   String       @unique @db.Uuid
+  status      PayoutStatus @default(PENDING)
+  guideNote   String?
+  adminNote   String?
+  processedAt DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  guide   GuideProfile @relation(fields: [guideId], references: [id])
+  payment Payment      @relation(fields: [paymentId], references: [id])
+
+  @@index([guideId])
+  @@index([status])
+  @@map("payout_requests")
 }
 
 // ============================================================
