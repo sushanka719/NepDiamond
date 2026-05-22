@@ -1,6 +1,5 @@
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { prisma } from "@/lib/prisma";
-import { redirect } from "next/navigation";
 import Link from "next/link";
 import {
   Mountain,
@@ -11,23 +10,38 @@ import {
   MapPin,
   ArrowRight,
   CheckCircle,
+  LayoutDashboard,
 } from "lucide-react";
 
+type Role = "TRAVELLER" | "GUIDE" | "ADMIN";
+
+const DASHBOARD_HREF: Record<Role, string> = {
+  TRAVELLER: "/dashboard/traveller",
+  GUIDE: "/dashboard/guide",
+  ADMIN: "/dashboard/admin",
+};
+
 export default async function Home() {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Check auth for conditional navbar — never redirect from the landing page
+  let dashboardHref: string | null = null;
 
-  if (user) {
-    const dbUser = await prisma.user.findUnique({
-      where: { id: user.id },
-      select: { role: true },
-    });
+  try {
+    const supabase = await createSupabaseServerClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-    if (dbUser?.role === "ADMIN") redirect("/dashboard/admin");
-    if (dbUser?.role === "GUIDE") redirect("/dashboard/guide");
-    if (dbUser?.role === "TRAVELLER") redirect("/dashboard/traveller");
+    if (user) {
+      const dbUser = await prisma.user.findUnique({
+        where: { id: user.id },
+        select: { role: true },
+      });
+      if (dbUser?.role) {
+        dashboardHref = DASHBOARD_HREF[dbUser.role as Role];
+      }
+    }
+  } catch {
+    // Auth check failed — just show the public landing page
   }
 
   return (
@@ -47,12 +61,21 @@ export default async function Home() {
               <a href="#how-it-works" className="hover:text-emerald-600 transition-colors">How it works</a>
               <a href="#for-guides" className="hover:text-emerald-600 transition-colors">For Guides</a>
             </nav>
-            <Link
-              href="/auth/login"
-              className="inline-flex items-center gap-2 rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors shadow-sm"
-            >
-              Get Started <ArrowRight className="h-4 w-4" />
-            </Link>
+            {dashboardHref ? (
+              <Link
+                href={dashboardHref}
+                className="inline-flex items-center gap-2 rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors shadow-sm"
+              >
+                <LayoutDashboard className="h-4 w-4" /> Go to Dashboard
+              </Link>
+            ) : (
+              <Link
+                href="/auth/login"
+                className="inline-flex items-center gap-2 rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors shadow-sm"
+              >
+                Login <ArrowRight className="h-4 w-4" />
+              </Link>
+            )}
           </div>
         </div>
       </header>
@@ -81,10 +104,10 @@ export default async function Home() {
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Link
-                href="/auth/login"
+                href={dashboardHref ?? "/auth/login"}
                 className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 px-6 py-3 text-base font-semibold text-white transition-colors shadow-lg shadow-emerald-900/40"
               >
-                Start Exploring <ArrowRight className="h-5 w-5" />
+                {dashboardHref ? "Go to Dashboard" : "Start Exploring"} <ArrowRight className="h-5 w-5" />
               </Link>
               <a
                 href="#how-it-works"
@@ -255,10 +278,10 @@ export default async function Home() {
               Join thousands of travellers and guides on NepDiamond. Your Himalayan adventure starts here.
             </p>
             <Link
-              href="/auth/login"
+              href={dashboardHref ?? "/auth/login"}
               className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 px-8 py-3.5 text-base font-semibold text-white transition-colors shadow-lg shadow-emerald-900/20"
             >
-              Get Started Free <ArrowRight className="h-5 w-5" />
+              {dashboardHref ? "Go to Dashboard" : "Get Started Free"} <ArrowRight className="h-5 w-5" />
             </Link>
           </div>
         </section>

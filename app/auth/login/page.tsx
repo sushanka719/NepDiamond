@@ -1,12 +1,19 @@
+import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Mountain } from "lucide-react";
+import { Mountain, ArrowLeft } from "lucide-react";
 import GoogleSignInButton from "./google-sign-in-button";
 
 export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 px-4">
       <div className="w-full max-w-md space-y-6">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-emerald-600 dark:text-slate-400 dark:hover:text-emerald-400 transition-colors"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" /> Back to home
+        </Link>
         {/* Brand */}
         <div className="flex flex-col items-center gap-2 text-center">
           <div className="flex items-center gap-2">

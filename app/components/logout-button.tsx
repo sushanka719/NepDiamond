@@ -15,7 +15,7 @@ export default function LogoutButton() {
     try {
       const res = await fetch("/api/auth/logout", { method: "POST" });
       if (res.ok) {
-        router.push("/auth/login");
+        router.push("/");
         router.refresh();
       } else {
         toast.error("Logout failed. Please try again.");
