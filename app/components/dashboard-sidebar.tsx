@@ -13,6 +13,7 @@ import {
   TrendingUp,
   Compass,
   MapPin,
+  Sparkles,
 } from "lucide-react";
 
 type Role = "TRAVELLER" | "GUIDE" | "ADMIN";
@@ -64,6 +65,7 @@ const GUIDE_MENU: SidebarEntry[] = [
 
 const TRAVELLER_MENU: SidebarEntry[] = [
   { label: "Overview", href: "/dashboard/traveller", icon: LayoutDashboard },
+  { label: "AI Trek Planner", href: "/dashboard/traveller/planner", icon: Sparkles },
   { label: "Find Guides", href: "/guides", icon: Users },
   { label: "My Hires", href: "/dashboard/traveller/hires", icon: ClipboardList },
 ];
