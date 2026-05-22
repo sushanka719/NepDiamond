@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Clock, CheckCircle, XCircle } from "lucide-react";
-import Navbar from "@/components/navbar";
 
 const STATUS_CONFIG = {
   PENDING: {
@@ -64,16 +63,7 @@ export default async function GuideDashboardPage() {
   const StatusIcon = statusConf.icon;
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-      <Navbar
-        user={{
-          fullName: dbUser.fullName,
-          avatarUrl: dbUser.avatarUrl,
-          role: "GUIDE",
-        }}
-      />
-
-      <main className="mx-auto max-w-5xl px-6 py-8 space-y-6">
+    <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold">Guide Dashboard</h1>
@@ -187,7 +177,6 @@ export default async function GuideDashboardPage() {
             </CardContent>
           </Card>
         )}
-      </main>
     </div>
   );
 }
