@@ -13,6 +13,8 @@ import {
   BadgeCheck,
   Clock,
   ChevronRight,
+  CalendarDays,
+  DollarSign,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 
@@ -80,6 +82,49 @@ export default async function Home() {
       avgRating,
     };
   });
+
+  // Fetch 4 upcoming departures
+  const rawDepartures = await prisma.trekDeparture.findMany({
+    where: {
+      deletedAt: null,
+      status: { in: ["SCHEDULED", "FULL"] },
+      trek: { deletedAt: null },
+    },
+    take: 4,
+    orderBy: { departureDate: "asc" },
+    select: {
+      id: true,
+      departureDate: true,
+      pricePerPerson: true,
+      maxParticipants: true,
+      status: true,
+      currency: true,
+      trek: {
+        select: {
+          title: true,
+          slug: true,
+          difficulty: true,
+          durationDays: true,
+          coverImageUrl: true,
+          region: { select: { name: true } },
+        },
+      },
+      _count: { select: { bookings: true } },
+    },
+  });
+
+  const departures = rawDepartures.map((d) => ({
+    ...d,
+    pricePerPerson: Number(d.pricePerPerson),
+    departureDate: d.departureDate.toISOString(),
+  }));
+
+  const DIFFICULTY_COLORS: Record<string, string> = {
+    EASY: "bg-green-100 text-green-800",
+    MODERATE: "bg-yellow-100 text-yellow-800",
+    STRENUOUS: "bg-orange-100 text-orange-800",
+    EXTREME: "bg-red-100 text-red-800",
+  };
 
   const avatarColors = [
     "bg-emerald-500",
@@ -288,6 +333,124 @@ export default async function Home() {
                     className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-6 py-2.5 text-sm transition-colors shadow-sm"
                   >
                     View More Guides <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </div>
+              </>
+            )}
+          </div>
+        </section>
+
+        {/* Upcoming Departures */}
+        <section className="py-16 sm:py-20 bg-slate-50 dark:bg-slate-900/50">
+          <div className="mx-auto max-w-6xl px-6 space-y-8">
+            <div className="flex items-end justify-between">
+              <div className="space-y-1">
+                <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">
+                  Upcoming Treks
+                </h2>
+                <p className="text-slate-500 dark:text-slate-400 text-sm">
+                  Group departures with fixed dates — book your seat now
+                </p>
+              </div>
+              <Link
+                href="/treks"
+                className="hidden sm:inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 transition-colors"
+              >
+                View all <ChevronRight className="h-4 w-4" />
+              </Link>
+            </div>
+
+            {departures.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-slate-200 dark:border-slate-700 py-16 text-center space-y-3">
+                <Mountain className="h-10 w-10 text-slate-300 dark:text-slate-600 mx-auto" />
+                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                  No upcoming departures at the moment
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {departures.map((d: typeof departures[number]) => {
+                    const spotsLeft = d.maxParticipants - d._count.bookings;
+                    const isFull = d.status === "FULL";
+                    return (
+                      <div
+                        key={d.id}
+                        className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col hover:shadow-md hover:border-emerald-200 dark:hover:border-emerald-800 transition-all"
+                      >
+                        {/* Cover image */}
+                        <div className="h-36 bg-slate-100 dark:bg-slate-800 overflow-hidden relative">
+                          {d.trek.coverImageUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={d.trek.coverImageUrl}
+                              alt={d.trek.title}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <div className="h-full flex items-center justify-center">
+                              <Mountain className="h-8 w-8 text-slate-400" />
+                            </div>
+                          )}
+                          {/* Spots badge */}
+                          <span className={`absolute top-2 right-2 text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            isFull
+                              ? "bg-amber-100 text-amber-700"
+                              : "bg-emerald-100 text-emerald-700"
+                          }`}>
+                            {isFull ? "Full" : `${spotsLeft} spots left`}
+                          </span>
+                        </div>
+
+                        <div className="p-4 flex flex-col gap-2 flex-1">
+                          <div className="flex items-start justify-between gap-1">
+                            <h3 className="font-semibold text-slate-900 dark:text-white text-sm leading-snug line-clamp-2 flex-1">
+                              {d.trek.title}
+                            </h3>
+                          </div>
+
+                          <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                            <MapPin className="h-3 w-3 shrink-0" />
+                            {d.trek.region.name}
+                          </p>
+
+                          <span className={`self-start text-[10px] font-semibold px-2 py-0.5 rounded-full ${DIFFICULTY_COLORS[d.trek.difficulty]}`}>
+                            {d.trek.difficulty}
+                          </span>
+
+                          <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 mt-auto pt-1">
+                            <span className="flex items-center gap-1">
+                              <CalendarDays className="h-3 w-3 shrink-0" />
+                              {new Date(d.departureDate).toLocaleDateString("en-US", {
+                                day: "numeric",
+                                month: "short",
+                                year: "numeric",
+                              })}
+                            </span>
+                            <span className="flex items-center gap-1 ml-auto font-semibold text-slate-800 dark:text-slate-200">
+                              <DollarSign className="h-3 w-3" />
+                              {d.pricePerPerson.toLocaleString()}
+                            </span>
+                          </div>
+
+                          <Link
+                            href={`/treks/${d.trek.slug}`}
+                            className="mt-1 w-full text-center text-xs font-medium rounded-lg border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-600 hover:text-white hover:border-emerald-600 dark:hover:bg-emerald-600 dark:hover:text-white dark:hover:border-emerald-600 py-1.5 transition-all"
+                          >
+                            View &amp; Book
+                          </Link>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="flex justify-center pt-2">
+                  <Link
+                    href="/treks"
+                    className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-6 py-2.5 text-sm transition-colors shadow-sm"
+                  >
+                    View All Treks <ArrowRight className="h-4 w-4" />
                   </Link>
                 </div>
               </>

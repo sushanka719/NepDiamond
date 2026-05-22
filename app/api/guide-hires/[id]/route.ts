@@ -110,6 +110,10 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   const isRequester = hire.requesterId === user.id;
   const isGuide = hire.guide.userId === user.id;
 
+  if (isRequester && isGuide) {
+    return Response.json({ error: "Requester and guide cannot be the same person" }, { status: 403 });
+  }
+
   if (!isRequester && !isGuide) {
     return Response.json({ error: "Forbidden" }, { status: 403 });
   }

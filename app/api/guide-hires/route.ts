@@ -29,8 +29,8 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: "Account not found or inactive" }, { status: 403 });
   }
 
-  if (requester.role === "GUIDE") {
-    return Response.json({ error: "Guides cannot hire other guides" }, { status: 403 });
+  if (requester.role !== "TRAVELLER") {
+    return Response.json({ error: "Only travellers can hire guides" }, { status: 403 });
   }
 
   let body: { guideId?: string; startDate?: string; endDate?: string; requirements?: string };
@@ -63,11 +63,15 @@ export async function POST(request: NextRequest) {
 
   const guide = await prisma.guideProfile.findUnique({
     where: { id: guideId },
-    select: { id: true, dailyRate: true, currency: true, verificationStatus: true, deletedAt: true },
+    select: { id: true, userId: true, dailyRate: true, currency: true, verificationStatus: true, deletedAt: true },
   });
 
   if (!guide || guide.verificationStatus !== "APPROVED" || guide.deletedAt) {
     return Response.json({ error: "Guide not found or not available" }, { status: 404 });
+  }
+
+  if (guide.userId === user.id) {
+    return Response.json({ error: "You cannot hire yourself" }, { status: 403 });
   }
 
   // Check for overlapping accepted/pending hires for this guide
