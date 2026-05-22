@@ -16,6 +16,19 @@ export async function POST(request: NextRequest, { params }: Params) {
   const { data: { user }, error } = await supabase.auth.getUser();
   if (error || !user) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
+  const dbUser = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { role: true, isActive: true, deletedAt: true },
+  });
+
+  if (!dbUser || !dbUser.isActive || dbUser.deletedAt) {
+    return Response.json({ error: "Account not found or inactive" }, { status: 403 });
+  }
+
+  if (dbUser.role !== "TRAVELLER") {
+    return Response.json({ error: "Only travellers can book trek departures" }, { status: 403 });
+  }
+
   const { slug } = await params;
 
   let body: { departureId?: string };
@@ -34,10 +47,14 @@ export async function POST(request: NextRequest, { params }: Params) {
       status: "SCHEDULED",
       trek: { slug, deletedAt: null },
     },
-    select: { id: true, pricePerPerson: true, maxParticipants: true, currency: true },
+    select: { id: true, pricePerPerson: true, maxParticipants: true, currency: true, departureDate: true },
   });
   if (!departure) {
     return Response.json({ error: "Departure not found or not open for booking" }, { status: 404 });
+  }
+
+  if (departure.departureDate <= new Date()) {
+    return Response.json({ error: "This departure date has already passed" }, { status: 409 });
   }
 
   const existingBooking = await prisma.trekBooking.findUnique({
